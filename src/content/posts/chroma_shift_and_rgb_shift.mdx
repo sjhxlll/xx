@@ -1,0 +1,45 @@
+---
+title: "Chroma Shift与RGB Shift"
+published: 2024-09-11
+image: "https://blog-static.xeonzilla.top/img/chroma_shift_and_rgb_shift/cover.avif"
+tags:
+  - "动画"
+  - "二次元"
+category: "动画科学"
+---
+## 色度的偏移
+Chroma Shift是一种动画视频画面的瑕疵，这里直接引用[[VCB-Studio 科普教程 6] 动漫视频常见的瑕疵/缺陷介绍](https://vcb-s.com/archives/4738)中色度偏移的部分：
+>色度偏移（chroma shift）
+>色度偏移，指的是色度平面相对亮度平面的错位，通常在极红/蓝/绿/紫处（这四个地方分别是U/V极大值或者极小值），线条多了一些重影（下图自制）：
+>![Chroma Shift](https://blog-static.xeonzilla.top/img/chroma_shift_and_rgb_shift/01.avif "Chroma Shift")
+>
+>上图是故意将UV左移两个像素。实际蓝光中鲜有这么大尺度的偏移，最多偏移一个像素，效果非常不明显；一般人很难观察到。
+>Chroma shift一般发生在数字图像处理中，不正确处理Chroma placement(Chroma相对Luma的位移)，造成的后果。修复手段通常叫做fix chroma shift。
+
+简言之，Chroma Shift是由多层画面未对齐导致的现象，既然将其称为”瑕疵“，很显然这是一种不应出现的错误。
+
+## Shift之间亦有不同
+偶然间我得知了另外一种”Shift“，名为RGB Shift。它和Chroma Shift一样，效果非常不明显，比较难以观察到。
+
+最为新鲜而典型的例子就是由伏原茜担任摄影监督的「间谍过家家」、「别当欧尼酱了！」和[「葬送的芙莉莲」](/posts/sousou_no_frieren/)，这几部动画的线条周围，都有着若隐若现的重影。
+
+![「别当欧尼酱了！」](https://blog-static.xeonzilla.top/img/chroma_shift_and_rgb_shift/02.avif "「别当欧尼酱了！」")
+
+定睛一看，这种症状似乎与Chroma Shift一致，这也是我对RGB Shift的第一印象：与Chroma Shift一样的画面缺陷，或者说，RGB Shift是Chroma Shift的别名？
+
+但事实是，RGB Shift并非失误导致的现象，它是创作者有意为之的一种表现方法。除动画外，一些韩国画师的插画作品也尤为喜爱这种效果。
+
+由命名可知，Chroma Shift出现在YUV颜色编码方法中，而RGB Shift出现在三原色光模式中。所以在二者的”Shift“中，Chroma Shift偏移的是UV平面的色度，而RGB Shift偏移的是三原色的相对位置。
+
+更为重要的是，Chroma Shift发生在数字图像处理中，换句话说，它出现在艺术创作完成后的二次处理中，这样的”Shift“是瑕疵、是错误；而RGB Shift是艺术创作过程中人为添加的效果，这样的”Shift“是艺术、是表达。
+
+在某些材料中，这类偏移被统称为Chroma RGB Shift，至少在动画中，这种称呼混淆了两个不同的概念，是一种语言的劣化；另一些文章中，RGB Shift常会与RGB Split同用，据我观察，二者的区别仅是偏移程度的不同。
+
+## 艺术与表达
+说实话，我对伏原茜与她的”RGB Shift表达“感到很困惑，因为这样的艺术表达跨越了制作公司与制作组，跨越了动画的类型，跨越了把握动画全局的监督——仅因伏原茜担任摄影监督，于是便有了RGB Shift。
+
+这种对RGB Shift近乎疯狂的喜爱，在我眼中是一种滥用，因为它似乎并未传达任何创作意图，更像是用小伎俩标记自己的作品。
+
+观众们对RGB Shift的评价也是褒贬不一。支持者认为RGB Shift属于摄影效果的一种，是创作者的表达意图，我们应该保留它、揣摩它；反对者认为RGB Shift影响画面观感，过度使用也隐去了原本的创作意图。
+
+无论立场如何，RGB Shift就是作品的一部分，这是来自制作组与摄影团队的表达；作为观众，我们自由讨论，这是来自观众的表达。正是有了这些表达，艺术的定义才得以成立。

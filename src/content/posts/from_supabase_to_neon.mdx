@@ -1,0 +1,33 @@
+---
+title: "从Supabase迁移至Neon"
+published: 2025-02-28
+image: "https://blog-static.xeonzilla.top/img/from_supabase_to_neon/cover.avif"
+tags:
+  - "技术"
+---
+## 最速迁移
+就在我写完[上篇文章](/posts/netlify_supabase_umami/)没多久，在论坛查找资料的途中，我偶然发现了Supabase的新兴竞品，Neon[^1]。一番对比后，我决定火速将Waline和Umami的数据库迁移到Neon。
+
+Neon和Supabase的免费计划额度各有千秋。虽说Neon非常慷慨，为免费计划用户提供最多10个项目，但是显然，我暂时用不了这么多；相比之下，它compute hours的计数方式就精细得多，每月190h的额度看上去岌岌可危，不过对于轻量用户，应该也是够用的。
+
+Neon最吸引我的，实际上并不在额度的限制，而是创建项目时，可以自行选择Postgres的版本，包括目前最新的版本17；而Supabase并不提供这个选项，默认使用Postgres 15。作为一位钟情于最新版和性能的用户，这个小细节深得我心。
+
+另外，Neon提供了AWS和Azure两种服务商，对于想使用Azure的用户也具有一定的优势。不过Azure能够选择的节点位置就很有限了。
+
+## 注意事项
+迁移至Neon时，我顺便修正了先前的一个小错误。在数据库的位置选择上，不应根据用户的地理位置，而应该关注Netlify Functions所在的区域，因为我的服务（Waline和Umami）部署在Netlify上，用户访问的是Netlify Functions，而负责连接数据库的也是Netlify Functions。
+
+现在区域对齐，服务商也同为AWS，它们间的连接表现极佳。甚至很有可能，两个服务正好位于同一数据中心，在内网中通信。
+
+至于用户如何连接至Netlify Functions，目前我没有优化的计划，一是Netlify在中国大陆的连通性尚可，二是大部分免费域名可靠性未知，或许比默认的`netlify.app`域名更容易被屏蔽。
+
+连接Umami顺利完成，但是在连接Waline上，我遇到了连接超时的问题，一番调查后才发现，虽然Neon默认不显示端口，但是想要连接Waline，端口是必选项。
+
+Neon的数据库端口藏在控制面板Connect中的`Django`选项里，为`5432`，和Supabase的端口一致。此时填写Waline的环境变量`PG_PORT`并重新部署，即可解决超时问题。
+
+## 总结
+实际上，两个平台的定位就存在着差异：Neon提供Serverless Postgres，而Supabase专注于BaaS。仅就我的需求而言，Neon才是“专业对口”的那位。
+
+Supabase仍然是很好的服务平台，有一定的免费额度、社区活跃，如果哪天我需要云服务，它会是一个很好的选择。
+
+[^1]:[Neon Serverless Postgres — Ship faster](https://neon.tech/home)

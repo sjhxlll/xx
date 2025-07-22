@@ -1,0 +1,139 @@
+---
+title: "站点被恶意镜像与反镜像"
+published: 2025-07-20
+tags: 
+  - "技术"
+category: "博客建设"
+---
+## 意外发现
+像往常一样，我在Cloudflare控制台的Web Analytics查看每天的访客数量，结果在来源处发现了一个陌生的域名。一打开，居然是我的博客的镜像，只不过内容被繁体化了。
+
+这个意外发现真是让我非常惊讶，没想到我这个无名小站居然也有被找上门的一天，我甚至想不出对方是怎么找到我的。如果只是附带原文链接，搬运几篇我的文章，那自然是再好不过了。但是镜像站点显然超出了搬运的范围，必须要重拳出击，想办法反制这种恶意行径了。
+
+## 反制措施
+最开始发现镜像站点，其实我是比较手足无措的，因为我也是第一次应对这种情况，幸亏有其他博主分享类似的经历[^1][^2][^3]，让我有了参考的对象。在此感谢这些博主们。
+
+### 分析
+在开始反制前，首先要分析镜像站点的工作方式。在我提交了一次更新，并且Cloudflare Workers编译完成后，发现镜像站点立刻同步了更新，且依旧是将内容繁体化；此外，镜像站点的图像在任何网络、浏览器环境下，均无法正常显示。
+
+结合以上两点，我推测镜像站点可能是反向代理了我的博客，并在反向代理的过程中自动繁体化，这样才能达成瞬间同步更新内容。
+
+说实话，这种动态的反向代理反而让我觉得很好解决，因为主动权仍然掌握在我手上。如果哪天镜像站点是直接通过搬运我的源代码仓库得来的，那我能做的也只有将仓库私有了。
+
+### WHOIS查询与投诉
+分析完毕，第一招自然是尝试从官方途径解决。利用WHOIS查询，可以快速得知镜像站的大致情况，我所遇到的镜像站域名在阿里云注册，在Cloudflare解析，所以我向这两个服务商进行了投诉。
+
+Cloudflare的表单没有下文，不过站点的解析一切正常，看起来目前为止投诉没有见效。
+
+比较令我感到无语的是阿里云的侵权举报系统，需要举报者填写知识产权信息与权利证明，显然一个博客是不会有这种信息的；而如果你向阿里云的注册商邮箱发送邮件，或是直接在首页的建议和投诉处投诉，他们会积极地联系你，让你前往侵权举报系统进行举报。
+
+![侵权举报](https://blog-static.xeonzilla.top/img/anti_malicious_mirroring/01.avif "侵权举报")
+
+我猜国内的域名注册商大概都是这样，只有上升到白纸黑字层面的侵权，他们才会开始行动，而个人站点的权利，他们是一概不管的。下次再遇到国内注册商，我会直接绕道另寻解决方法，起码不会浪费我的时间，不会像这次经历一样操作半天，最后发现我居然连举报的资格都没有。
+
+除了向注册商、DNS解析服务商投诉外，向搜索引擎投诉也是可行的，能够让镜像站点在搜索引擎上消失。不过我认为这是治标不治本的方案，而且我的站点在搜索引擎上也没有什么排名，光脚的不怕穿鞋的，所以就没有继续投诉下去了。
+
+### Javascript重定向
+从官方“外交”途径解决问题行不通，我们就只能自己动手了。第二招是参考其他博主的代码，在博客中加入重定向，阻断对镜像站点的访问。
+```js title="src/layouts/Layout.astro"
+document.addEventListener('DOMContentLoaded', () => {
+    function toHex(str: string): string {
+        return [...str].map((c: string) =>
+            c.charCodeAt(0).toString(16).padStart(2, '0')
+        ).join('');
+    }
+
+    function fromHex(hex: string): string {
+        const matches = hex.match(/.{1,2}/g);
+        if (!matches) return '';
+        return matches.map((byte: string) =>
+            String.fromCharCode(parseInt(byte, 16))
+        ).join('');
+    }
+
+    function redirectToOfficialSite(): void {
+        // https://xeonzilla.top
+        const official = fromHex('68747470733a2f2f78656f6e7a696c6c612e746f70');
+        window.location.href = official;
+    }
+
+    const encodedDomains = [
+        // xeonzilla.top
+        '78656f6e7a696c6c612e746f70',
+        // www.xeonzilla.top
+        '7777772e78656f6e7a696c6c612e746f70',
+        // localhost
+        '6c6f63616c686f7374',
+    ];
+
+    const rawHost: string = window.location.host;
+    const host: string = rawHost.split(':')[0];
+    const encodedHost: string = toHex(host);
+
+    const isValid: boolean = encodedDomains.some(hex => encodedHost.startsWith(hex));
+
+    if (!isValid) {
+        document.body.innerHTML = `
+    		<div>
+        		<h1>⚠ 当前页面并非作者的官方网站</h1>
+        		<p>您正在访问的页面并非本站作者授权发布的内容。</p>
+        		<p>为了保护原创内容，您将在 <strong>5 秒后</strong> 自动跳转至作者的官方网站。</p>
+        		<hr style="width: 60%; margin: 1em auto;">
+        		<h2>⚠ This is NOT the original author's official website</h2>
+        		<p>The page you are visiting is not officially published by the author.</p>
+        		<p>You will be redirected to the official site in <strong>5 seconds</strong> to protect original content.</p>
+   			</div>
+	    `;
+
+        document.body.style.cssText = `
+            background-color: white;
+            color: black;
+            text-align: center;
+            font-size: 2em;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+        `;
+
+        setTimeout(() => redirectToOfficialSite(), 5000);
+    }
+});
+```
+
+原版的代码使用的是Base64编码，不过我发现`atob()`方法在编辑器中会有Deprecated提示，所以换成了Hex编码，效果是一样的。
+
+重定向代码应该放在第一屏加载的代码中，且应放在每个页面都包含的代码中，这样才能使用户一访问镜像站的任何页面就触发转跳。以Fuwari为例，我放在了`src/layouts/Layout.astro`中，它是页面的主体结构。
+
+至于更进一步的加密和混淆，个人认为是没有必要的，对于简单的脚本和程序，只要不明文显示域名即可；而对于人工操作的站点镜像，无论怎么在代码上操作，对方总能找到破解的方法，越是混淆的代码反而越是可疑。
+
+### 蜜罐与IP屏蔽
+上面的转跳仍然没有从根本上摧毁镜像站，只是从结果上，镜像站暂时无法被访问了。我想到的第三招，也是最终解决方案，就是屏蔽来自镜像站点的抓取。
+
+那么要如何分辨正常访问者与镜像站点抓取的流量呢？我想到了蜜罐，通过设置一个正常用户不会访问，但是抓取者在全站抓取时会访问的路径，识别出异常访问者的IP，然后再针对性地设置规则屏蔽。
+
+```html title="honeypot.html"
+<a href="/honey-trap-do-not-enter" style="display:none; visibility:hidden;" aria-hidden="true" tabindex="-1"></a>
+```
+
+上面就是一个简单的蜜罐链接，`style="display:none; visibility:hidden;" aria-hidden="true" tabindex="-1"`确保了链接对普通用户完全不可见、不可选中，视障用户的屏幕阅读器也会忽略这个元素，只有抓取者为了获取所有资源时，才会访问这个链接。
+
+蜜罐并不需要在任何位置都被访问到，因为抓取者一定会主动地访问，只需包含在站点代码中即可，如果想增强隐蔽性，可以放在奇奇怪怪的角落里。
+
+布置了蜜罐，还需要在Cloudflare仪表盘的安全性 - 安全规则中设置自定义规则，每当有人访问蜜罐时，则阻止或是质询。这样一来，我们就能在仪表盘看到大量的可疑IP。通过UA排除一些不遵守robots.txt的Bot，绝大部分是疯狂抓取语料的AI Bot，剩下的IP中就藏匿着镜像站点的犯人。
+
+最后另外新建一条自定义规则，依次单独阻止这些可疑IP，我们就能筛选出来自镜像站的IP，并使镜像站完全不可用。屏蔽一个IP可能会影响使用同一个IP的用户，不过我觉得利大于弊，后续可以通过添加更多条件缩小屏蔽范围，降低影响面。
+
+![屏蔽](https://blog-static.xeonzilla.top/img/anti_malicious_mirroring/02.avif "屏蔽")
+
+## 总结
+静态博客被恶意镜像，不像动态博客一样控制着源服务器，有那么大的操作空间，但是仍可以利用DNS解析服务商的各种防护功能，完成对镜像站点的阻击。Cloudflare就提供了大量的防护功能，只要集思广益、合理利用，必能保站点无虞。
+
+现在的互联网环境真是愈发恶劣，想走捷径的人太多，竟让一个小小的个人站点都难以立足。回首那些坚持了十年以上的老牌博客，如今才更能体会到其中的艰难与坚持。
+
+[^1]:[站点SEO与被镜像 | YeungYeah 的乱写地](https://scottyeung.top/2024/mirror-website-in-seo/)
+[^2]:[网站被恶意镜像了该怎么办 | 阿猪的博客](https://yfzhu.cn/posts/1014/)
+[^3]:[博客被恶意镜像 | 流动](https://liudon.com/posts/blog-malicious-mirroring/)

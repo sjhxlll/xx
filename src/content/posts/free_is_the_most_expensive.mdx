@@ -1,0 +1,35 @@
+---
+title: "免费的才是最贵的：记站点功能迁移"
+published: 2025-03-13
+tags:
+  - "技术"
+  - "杂谈"
+category: "博客建设"
+---
+## 无尽迁移之路
+继前面[部署Umami](/posts/netlify_supabase_umami/)和[数据库迁移](/posts/from_supabase_to_neon/)后，我又在使用Umami的过程中发现了新问题：怎么仪表盘的数据全是重复的呢？在Github一番搜索后，我找到了三个相同的案例[^1][^2][^3]，而且非常遗憾，开发者没有任何有效的答复，这个Bug目前悬而未决。
+
+出现了影响使用的问题，那么只能是更换平台了，我Umami把迁移到Vercel上。由于`vercel.app`被屏蔽，为了中国大陆的访问性，我又不得不寻找解决方法。唯一的解决办法，只有绑定自定义域名。
+
+众所周知，我使用Github Pages也就是图个免费、可玩性高，要让我去买一个域名，岂不是和我的建站初心之一相悖？不得已，只能动身去找免费域名了。`eu.org`早已不接受申请，其他的小众免费域名又有种种限制。最后，我申请了一个`us.kg`域名。
+
+`us.kg`可以托管至Cloudflare，申请也不需要绑定信用卡，看上去还是很实用的。二话不说，我就为Vercel上的Umami绑定了域名，这下终于能自由地访问自行部署的Umami了。
+
+各种教程、文档都以Vercel为例确实是有道理的，部署在Vercel上的Umami使用起来丝滑流畅；相较之下，Netlify下的Umami就会有加载延迟，不知道是什么性能指标上的差距。
+
+好景不长，`us.kg`被全球性的停止解析了，而且不是第一次。我又不能正常地访问Umami了。
+
+这下我真是被免费域名“吓破了胆”，毕竟谁也无法保证，其他的免费域名会不会出现同样的问题。一番兜兜转转，我又回到了Netlify，起码它能用。至于Umami的Bug，目前只能靠我定期重新部署缓解了。
+
+## 金钱的丘壑
+从托管平台，到分析工具，再到域名，一切都是免费的，那么代价是什么呢？我不得不进行多次无谓的迁移，企图抹平免费服务的差距；不得不苦苦等待Umami官方的修复，毕竟免费开源的项目，开发者们也是用爱发电。反倒是时间代价最小，毕竟我确实对这种折腾乐在其中，就当是练手、体验新事物了。
+
+即使是乐在其中，来来回回的也很让我疲惫：不是我失去了对站点建设的动力，而是我对免费服务质量的天然差距感到绝望。这些差距，惟有金钱才能弥补。
+
+只要购入一个域名，就能够享受到Vercel的一站式部署体验，享受到全球CDN的加速，享受到Cloudflare的防护和各种额外功能，享受到友好的SEO，享受到各种歧视免费域名的友链、博客项目。如此想来，一个域名能做到的事真是太多了。
+
+如果有一天，本站的域名不再是`xeonzilla.guthub.io`，那便是我的屈服之时。现在的我还有一丝倔强之心，能让我和各种免费服务再战三百回合。
+
+[^1]:[Referrers data is shown in every table · Issue #3122 · umami-software/umami](https://github.com/umami-software/umami/issues/3122)
+[^2]:[I broke it · umami-software/umami · Discussion #3303](https://github.com/umami-software/umami/discussions/3303)
+[^3]:[Something weird is going on with my self-hosted instance. · umami-software/umami · Discussion #3173](https://github.com/umami-software/umami/discussions/3173)

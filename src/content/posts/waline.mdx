@@ -1,0 +1,134 @@
+---
+title: "更换博客评论系统：Waline"
+published: 2024-10-07
+image: "https://blog-static.xeonzilla.top/img/waline/cover.avif"
+tags:
+  - "技术"
+  - "Hugo"
+  - "Blowfish"
+category: "博客建设"
+---
+## 契机
+原本Giscus + Telegram Comments的双评论系统在缝缝补补后也算高度可用，但是最近的一些事件最终促成了我再次更换评论系统。
+
+最重要的，当然是Telegram的创始人帕维尔·杜罗夫在法国被捕，进而引发的Telegram修改隐私政策。虽说修改隐私政策大概率不影响我的使用，但是它让我对隐私有了更深入的思考，一个合格的评论系统能够完成供用户留言的功能，但是需要登录是否收集了一些无用的数据？允许匿名评论或许是我能提供的更好的方案。
+
+其次便是在主题适配方面，即使通过监听`html`以改变黑暗模式，也很难阻止用户进行非常规的操作，无论我如何修改代码，总能在测试时发现无法覆盖的情况。内心的完美主义作祟，使我很难忍受这种状况外的结果。
+
+于是乎，更换评论系统势在必行了。
+
+## 启动Waline
+Waline的部署非常方便，而且官方文档[^1]也非常详尽，只需跟随文档的步骤，Waline很快就能部署成功。
+
+在部署平台的选择上，我没有使用默认的Vercel，而是将其部署在Netlify上。因为Vercel的可访问性相对较差，为了保障体验往往需要绑定自定义域名；相比之下，虽然Netlify的连接也不能算一路畅通，但是基本可以使用，免去了绑定域名的步骤。
+
+一个需要小小注意的地方，Netlify提供的域名并不是我们需要的`serverURL`，Functions云函数列表中的comment才是服务的所在地。
+
+最终经过一些调整，我得到了评论区的代码：
+```html title="layouts/partials/comments.html" collapse={38-46} {16-18, 20-26}
+<head>
+    <link rel="stylesheet" href="https://unpkg.com/@waline/client@v3/dist/waline.css" />
+</head>
+
+<style>
+    :root {
+        --waline-theme-color: rgb(96, 165, 250);
+        --waline-active-color: rgb(37, 99, 235);
+    }
+
+    .dark:root {
+        --waline-theme-color: rgb(37, 99, 235);
+        --waline-active-color: rgb(96, 165, 250);
+    }
+
+    .wl-editor {
+        box-sizing: border-box;
+    }
+
+    .article-pageview {
+        display: block;
+        text-align: end;
+        margin-top: -2%;
+        color: var(--waline-light-grey);
+        font-size: var(--waline-info-font-size);
+    }
+</style>
+
+<body>
+    <div id="waline"></div>
+    <time class="article-pageview">
+        <span class="waline-pageview-count" data-path="{{.RelPermalink}}">0</span> 次浏览
+    </time>
+    <script>
+        function loadWaline() {
+            import('https://unpkg.com/@waline/client@v3/dist/waline.js').then(({ init }) => {
+                init({
+                    el: '#waline',
+                    serverURL: 'https://xeonzilla-waline.netlify.app/.netlify/functions/comment',
+                    emoji: false,
+                    dark: 'html[class="scroll-smooth dark"]',
+                    requiredMeta: ['nick'],
+                    search: false,
+                    pageview: true,
+                    locale: {
+                        placeholder: '填写昵称即可匿名评论\n亦可使用第三方账号登录'
+                    }
+                });
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            if ('IntersectionObserver' in window) {
+                let observer = new IntersectionObserver(loadComments, {
+                    root: null,
+                    rootMargin: '0px',
+                    threshold: 0.1
+                });
+
+                let walineElement = document.getElementById('waline');
+                observer.observe(walineElement);
+            } else {
+                loadWaline();
+            }
+        });
+
+        function loadComments(entries, observer) {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    loadWaline();
+                    observer.unobserve(entry.target);
+                }
+            });
+        }
+    </script>
+</body>
+```
+当评论区正常工作，可以无需登录评论的时候，感觉这种完全隐匿的感觉好极了。如果所有网站都可以匿名评论，会有多美好！
+
+## 适配与调整
+不知道是Waline还是Blowfish的问题，默认情况下，评论区的文本框会溢出，为了解决这个问题，需要改变文本框计算宽度时的范围：
+```css title="layouts/partials/comments.html" startLineNumber=16
+.wl-editor {
+    box-sizing: border-box;
+}
+```
+在单独启动Waline测试的时候，Waline占据页面的全部宽度，此时文本框的位置正常。可能是Waline或Blowfish对宽度的设置和判断出现了问题。
+
+![文本框溢出](https://blog-static.xeonzilla.top/img/waline/01.avif "文本框溢出")
+
+Waline提供了浏览数统计功能，于是我们也可以跟随官方文档在代码中启用，为了让它能够和评论区融为一体，我们直接使用Waline预设的样式：
+```css title="layouts/partials/comments.html" startLineNumber=20
+.article-pageview {
+    display: block;
+    text-align: end;
+    margin-top: -2%;
+    color: var(--waline-light-grey);
+    font-size: var(--waline-info-font-size);
+}
+```
+Waline和Blowfish的样式间还存在一些冲突，但是最后的显示效果竟然不错，所以就没有进一步的修正。
+
+Waline的功能丰富、文档齐全，可玩性属实很高，还有高阶用户贡献进阶攻略[^2]，等到日后空闲，Waline还能供我进一步探索。
+
+[^1]:[Waline | Waline](https://waline.js.org/)
+[^2]:[建站技术 | 使博客更好地接入 Waline](https://blog.reincarnatey.net/2024/0719-better-waline/)

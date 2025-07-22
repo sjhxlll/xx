@@ -1,0 +1,82 @@
+---
+title: "更换博客主题：从PaperMod到Blowfish"
+published: 2024-09-19
+image: "https://blog-static.xeonzilla.top/img/from_papermod_to_blowfish/cover.avif"
+tags:
+  - "技术"
+  - "Hugo"
+  - "PaperMod"
+  - "Blowfish"
+category: "博客建设"
+---
+花了几天的空闲时间，把我的博客主题从PaperMod[^1]更换成了Blowfish[^2]，顺便整理了一下博客目录下的各种文件。整个博客瞬间焕然一新，显得更加现代与美观了。
+
+## 再见，PaperMod
+在[建站小结](/posts/blog_summary/)里，我对PaperMod的评价还是相当正面的，现在看来，这样的评价或许源于我对博客框架与主题的不了解。
+
+PaperMod是一款简约高效的主题，这种说法是对的；PaperMod功能简单、代码陈旧，这种说法也是对的。当想要深入拓展博客的功能、完善博客的外观时，我发现PaperMod并没有留下太多有用的配置项，如果你想要某功能，可行的道路只有自行动手编写。这也是PaperMod教程丰富的另一面：主题本身过于简单，用户需要大量自行修改。
+
+少许的修改是搭建博客的情趣所在，我也非常享受这个修改的过程。但是不知不觉间，博客目录的`layouts`路径下堆满了各种拓展功能的`html`，尽管这样大量改造，PaperMod离功能完善还有很大的差距。我并不喜欢简约的主题，这是最后的结论。
+
+代码陈旧，或是说框架混乱，这一点并不明显，因为我并不是主题制作者。唯一能够感受到的，就是在编写新功能时，总会遇到各种需要调试的意料外情况，这些bug往往错综复杂地连接着主题里的其它代码。
+
+在PaperMod遇挫后，我想要寻找一个类似的替代品，偶然间我看到了PaperModX[^3]，正当我以为寻得了一个合格的继任者，一个醒目的issue，[Has this fork been abandoned? · Issue #61 · reorx/hugo-PaperModX](https://github.com/reorx/hugo-PaperModX/issues/61)告诉我事情没有那么简单。
+>I find it difficult to maintain this project because the original project "PaperMod" has an unclear code base. Every time I make changes or additions, I have to review the entire code again to remember what I understood previously. Despite this, I am still using it for my personal website, but I don't feel like adding anything new to it.
+>
+>我发现维护这个项目非常困难，因为原项目“PaperMod”的代码基础不够清晰。每次我做出更改或添加新内容时，都必须重新审视整个代码，以回忆我之前的理解。尽管如此，我仍然在我的个人网站上使用它，但我并不打算再添加任何新功能。
+
+PaperModX开发者的这段话很大程度上促成了这次主题更换。虽然我不是主题制作者，但是我知道质量低下的代码意味着什么，它会降低代码编写效率、催生大量bug、甚至影响代码贡献者的开发意愿。就是在这样的背景下，更换主题势在必行。
+
+## 迁移至Blowfish
+首先我要为在[Hugo中的AVIF与累积布局偏移（CLS）](/posts/hugo_avif_cls/)中提到的Zola正名，因为我大致浏览了一遍Hugo的主题列表，发现Hugo的主题生态也凋敝不堪，看似主题数量众多，但是相当一部分都已停止更新，成为了历史的一部分。总体而言，Hugo的社区生态并不比Zola好太多，这也是个人博客退潮的一个缩影吧。
+
+在主题列表的顶部，我注意到了Blowfish，它有大量的自定义功能，丰富的定制选项。最难能可贵的是，Blowfish的文档[^4]相当详细，几乎列出了所有的功能与选项。即使我可能在未来再次发现Blowfish的各种问题，但是它给我的第一印象相当好。
+
+迁移完成的感受，就是Blowfish的功能真是丰富到了极点，各种可调项让配置文件也格外的长；与之形成对比的则是`layouts`下大幅下降的文件数量，就我而言，目前Blowfish只需要额外的`comments.html`以设置评论区、`extend-footer.html`展示许可协议。
+
+### 评论区适配
+先前在[Comments Widget的自动主题和双评论系统](/posts/auto_theme_comments_system_with_comments_widget/)展示的代码逻辑无需改变，只需在监听方式上适应Blowfish即可。经过我在web开发者工具中的一番探索，发现Blowfish在变更主题时，`html`的`class`会添加和删除`dark`这个类，于是我们便以此判断博客主题的变化。
+
+关键的监听函数如下：
+```js title="layouts/partials/comments.html"
+const observer = new MutationObserver((mutationsList) => {
+    mutationsList.forEach(mutation => {
+        if (mutation.attributeName === 'class') {
+            setGiscusTheme();
+            setTelegramTheme();
+        }
+    });
+});
+
+observer.observe(document.documentElement, { attributes: true });
+```
+简单修改一番，评论区就能够正常工作了。
+
+### 小误会
+我满心欢喜，发布更换主题后的博客，突然发现它在我的手机上意外的不流畅，滑动间充满粘滞感。为了提升站点性能，我把动态背景换成了静态，把所有不重要的图片资源二次压缩，即使如此，操作间的卡顿也没有消失。
+
+正当我怀疑是Blowfish性能消耗过大时，群友的Scene帧率记录给了我灵感。在分析记录后，GPU频率折线图给出了答案：一切卡顿的源头是联发科的GPU。
+
+Blowfish主题添加了大量的模糊效果，而我使用的天玑8100（MT6895Z/TCZA）存在着绘制模糊效果GPU异常升频的bug，二者碰撞出了这个性能低下的假象。
+
+完成设置后的博客，能够在PageSpeed Insights中取得颇高的分数，与PaperMod的水平相差无几，难以想象它们间的功能差距如此巨大。
+
+### 感受Tailwind CSS
+Blowfish使用Tailwind CSS[^5]构建，所以在编写自定义界面时也免不得要接触这个CSS框架。
+
+Tailwind CSS给我的第一感受，就是繁琐。不同于原生CSS的直接编写，在使用预编译的`class`时，需要反复在主题的`main.css`中搜寻对应的代码，许多类也不像它们的名字一样“所见即所得”。
+
+一个简单的例子就是`.ratio-16-9 { padding-top: 56.25%; }`，我确实很难将二者联系起来，因为这和我想要的`aspect-ratio: 16/9;`相差甚远。
+
+随着时间推移，我也能渐渐感受到这个框架的便利：在熟悉了类名对应的属性后，Tailwind CSS确实能简化代码、提高效率；同时，所有CSS属性都被预先封装，意味着我能够通过简单的查找仿制出与主题融为一体的自定义界面。
+
+## 完工总结
+曾经我以为在同样的Hugo框架下，更换主题仅仅是`git submodule add`这么简单，但是这次上手实操，我才发现更换一个主题的工程量已经接近重新搭建博客了。也许不会有下一次更换主题了，既然工程量如此巨大，不如直接更换博客框架。
+
+Blowfish带来的感官变化是巨大的，它功能丰富、界面现代，给我“别人的博客”的感觉。Blowfish现在仍在积极开发中，我很期待开发者还能为我们带来怎样的变化。
+
+[^1]:[adityatelange/hugo-PaperMod: A fast, clean, responsive Hugo theme.](https://github.com/adityatelange/hugo-PaperMod)
+[^2]:[nunocoracao/blowfish: Personal Website & Blog Theme for Hugo](https://github.com/nunocoracao/blowfish)
+[^3]:[reorx/hugo-PaperModX: A fast, clean, responsive Hugo theme.](https://github.com/reorx/hugo-PaperModX)
+[^4]:[文档 · Blowfish](https://blowfish.page/zh-cn/docs/)
+[^5]:[Tailwind CSS - Rapidly build modern websites without ever leaving your HTML.](https://tailwindcss.com/)

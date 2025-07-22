@@ -1,0 +1,330 @@
+---
+title: "Comments Widget的自动主题和双评论系统"
+published: 2024-08-20
+tags:
+  - "技术"
+  - "Hugo"
+  - "PaperMod"
+category: "博客建设"
+---
+## 起因
+在初步完成个人Github Pages的搭建后，我就一直在考察除Giscus[^1]外的其他评论系统。虽说Giscus托管在Github上、而且免费开源、不包含广告，看上去全是优点，但是我忽略了一个重要的因素：用户来源。
+
+正如我在[关于](/about/)中所说，这个博客是我的动画Telegram频道[^2]的一种拓展，主要发布的内容也是动画相关的观后感。至于技术博文或是其他内容，只有在我认为有必要时才起身写作。
+
+而Github Pages和Giscus，还是用在技术博客居多。在技术博客上要求用户使用Github登录，是一件非常自然、非常顺理成章的事；而在一篇动画观后感的评论区要求使用Github登录，显得有些离题万里、不合逻辑，这极有可能打击了用户的评论欲望。
+
+于是，我选择接入Comments Widget[^3]，与Giscus组成博客的双评论系统，以缓解用户来源差异的问题。
+
+## 代码展示
+代码大致能分为切换按钮、Giscus和Comments Widget三部分:
+```html title="layouts/partials/comments.html"
+<div class="comment-toggle-buttons">
+    <button id="show-giscus" class="active" onclick="showGiscus()">Github Discussions</button>
+    <button id="show-telegram" onclick="showTelegram()">Telegram Comments</button>
+</div>
+
+<div id="github-discussions" class="comment-box"></div>
+<div id="telegram-comments" class="comment-box"></div>
+
+<style>
+    .comment-toggle-buttons {
+        display: flex;
+        justify-content: center;
+        margin-top: 50px;
+        margin-bottom: 10px;
+        gap: 10px;
+    }
+
+    #telegram-comments {
+        min-height: 378.2px;
+        display: none;
+    }
+
+    .comment-toggle-buttons button {
+        display: block;
+        padding: 0 14px;
+        color: var(--primary);
+        font-size: 14px;
+        line-height: 34px;
+        background: var(--code-bg);
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+    }
+
+    .comment-toggle-buttons button:hover {
+        background: var(--border);
+    }
+
+    .comment-toggle-buttons button.active {
+        pointer-events: none;
+        background-color: transparent;
+    }
+</style>
+
+<script>
+    let telegramLoaded = false;
+
+    function showGiscus() {
+        document.getElementById('show-giscus').classList.add('active');
+        document.getElementById('show-telegram').classList.remove('active');
+        document.getElementById('github-discussions').style.display = 'block';
+        document.getElementById('telegram-comments').style.display = 'none';
+        setGiscusTheme();
+    }
+
+    function showTelegram() {
+        document.getElementById('show-giscus').classList.remove('active');
+        document.getElementById('show-telegram').classList.add('active');
+        document.getElementById('github-discussions').style.display = 'none';
+        document.getElementById('telegram-comments').style.display = 'block';
+        if (!telegramLoaded) {
+            loadTelegramWidget();
+            telegramLoaded = true;
+        }
+    }
+
+    const getStoredTheme = () => localStorage.getItem("pref-theme") === "dark" ? "dark" : "light";
+
+    const setGiscusTheme = () => {
+        const sendMessage = (message) => {
+            const iframe = document.querySelector('iframe.giscus-frame');
+            if (iframe) {
+                iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+            }
+        };
+        sendMessage({ setConfig: { theme: getStoredTheme() === 'dark' ? 'noborder_dark' : 'noborder_light' } });
+    };
+
+    const loadTelegramWidget = () => {
+        const telegramDiv = document.getElementById('telegram-comments');
+        telegramDiv.innerHTML = "";
+        const telegramScript = document.createElement("script");
+        telegramScript.src = "https://comments.app/js/widget.js?3";
+        telegramScript.defer = true;
+        telegramScript.setAttribute("data-comments-app-website", "i7gjmkOw");
+        telegramScript.setAttribute("data-limit", "100");
+        telegramScript.setAttribute("data-height", "371");
+        telegramScript.setAttribute("data-dislikes", "1");
+        telegramScript.setAttribute("data-colorful", "1");
+        telegramScript.setAttribute("data-dark", getStoredTheme() === "dark" ? "1" : "0");
+        telegramDiv.appendChild(telegramScript);
+    };
+
+    const setTelegramTheme = () => {
+        loadTelegramWidget();
+    };
+
+    document.addEventListener("DOMContentLoaded", () => {
+        const giscusAttributes = {
+            "src": "https://giscus.app/client.js",
+            "data-repo": "Xeonzilla/Xeonzilla.github.io",
+            "data-repo-id": "R_kgDOL6BvNQ",
+            "data-category": "Announcements",
+            "data-category-id": "DIC_kwDOL6BvNc4Cfb8m",
+            "data-mapping": "pathname",
+            "data-strict": "1",
+            "data-reactions-enabled": "1",
+            "data-emit-metadata": "0",
+            "data-input-position": "top",
+            "data-theme": getStoredTheme() === 'dark' ? 'noborder_dark' : 'noborder_light',
+            "data-lang": "zh-CN",
+            "crossorigin": "anonymous",
+        };
+
+        const giscusScript = document.createElement("script");
+        Object.entries(giscusAttributes).forEach(
+            ([key, value]) => giscusScript.setAttribute(key, value));
+        giscusScript.defer = true;
+        document.querySelector("#github-discussions").appendChild(giscusScript);
+
+        if (document.getElementById('telegram-comments').style.display === 'block') {
+            loadTelegramWidget();
+            telegramLoaded = true;
+        }
+
+        const themeSwitcher = document.querySelector("#theme-toggle");
+        if (themeSwitcher) {
+            themeSwitcher.addEventListener("click", () => {
+                setGiscusTheme();
+                setTelegramTheme();
+            });
+        }
+    });
+</script>
+```
+
+其中，Giscus的自动主题切换有现成的方案，具体可以参考
+- [How to Enable Giscus Comments System in Hugo | Jason Lyu](https://12x.me/posts/2023-04-18-hugo-giscus/)
+- [PaperMod 集成 Giscus 评论 | Tofuwine's Blog](https://www.tofuwine.cn/posts/610b75f5/)
+
+我的代码在他们的基础上小修小改，就不在此拾人牙慧了。
+
+下面的代码是从完整代码中分离出来的，它们极有可能**无法独立工作**，仅作解析思路用。
+
+### Comments Widget
+官方页面会在你填入所需信息和所选项后自动生成代码，和Giscus类似，如无特殊需求，直接复制代码至`layouts/partical/comments.html`即可使用。
+
+但是为了实现功能，我们需要对代码进行改造。
+```html title="layouts/partials/comments.html"
+<div id="telegram-comments" class="comment-box"></div>
+
+<style>
+    #telegram-comments {
+        min-height: 378.2px;
+        display: none;
+    }
+</style>
+
+<script>
+    let telegramLoaded = false;
+
+    const getStoredTheme = () => localStorage.getItem("pref-theme") === "dark" ? "dark" : "light";
+
+    const loadTelegramWidget = () => {
+        const telegramDiv = document.getElementById('telegram-comments');
+        telegramDiv.innerHTML = "";
+        const telegramScript = document.createElement("script");
+        telegramScript.src = "https://comments.app/js/widget.js?3";
+        telegramScript.defer = true;
+        telegramScript.setAttribute("data-comments-app-website", "i7gjmkOw");
+        telegramScript.setAttribute("data-limit", "100");
+        telegramScript.setAttribute("data-height", "371");
+        telegramScript.setAttribute("data-dislikes", "1");
+        telegramScript.setAttribute("data-colorful", "1");
+        telegramScript.setAttribute("data-dark", getStoredTheme() === "dark" ? "1" : "0");
+        telegramDiv.appendChild(telegramScript);
+    };
+
+    const setTelegramTheme = () => {
+        loadTelegramWidget();
+    };
+
+    document.addEventListener("DOMContentLoaded", () => {
+        if (document.getElementById('telegram-comments').style.display === 'block') {
+            loadTelegramWidget();
+            telegramLoaded = true;
+        }
+    });
+</script>
+```
+
+代码最核心的部分其实就是一个`loadTelegramWidget()`，以加载Comments Widget，其他的代码都依赖于此。
+
+我们需要监听页面主题的切换按钮，当页面主题切换时，触发`setTelegramTheme()`的操作。虽说这个行为的目的是主题设置，但是实际上是重新加载Comments Widget，从代码上也可以看出来。
+
+为什么是重载而不是直接切换主题呢？因为我似乎没有找到通过通信使Comments Widget切换主题的方法，Telegram也没有提供相关文档。我曾尝试将Giscus的代码逻辑套用到Comments Widget上，但是并不生效。以重载完成主题切换，是一种无奈之举。
+
+等我找到切换主题的方法，或是Telegram提供了相关文档，又或是有人给出了教程，这套方案就会被弃用。不管我如何完善和优化重载的逻辑，它在性能消耗和可靠性上还是不如原生的主题切换。
+
+重载能完成主题切换，但是我们不需要让它在任何操作后都重载，所以需要设置一个标志`let telegramLoaded = false`，当Comments Widget完成首次加载后将标志设置为`true`，避免用户多次切换评论区导致重复加载。
+
+在样式上，`min-height: 378.2px`起占位作用，在Comments Widget加载前维持页面元素的相对位置。378.2px是Giscus没有评论时的高度，也是所有情况下的最小高度，保持默认高度一致，使用户在切换评论系统时，页面元素不会位移。
+
+### 切换按钮
+相比之下，切换按钮的逻辑就较为简单，主要是样式上的调整。
+```html title="layouts/partials/comments.html"
+<div class="comment-toggle-buttons">
+    <button id="show-giscus" class="active" onclick="showGiscus()">Github Discussions</button>
+    <button id="show-telegram" onclick="showTelegram()">Telegram Comments</button>
+</div>
+
+<style>
+    .comment-toggle-buttons {
+        display: flex;
+        justify-content: center;
+        margin-top: 50px;
+        margin-bottom: 10px;
+        gap: 10px;
+    }
+
+    .comment-toggle-buttons button {
+        display: block;
+        padding: 0 14px;
+        color: var(--primary);
+        font-size: 14px;
+        line-height: 34px;
+        background: var(--code-bg);
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+    }
+
+    .comment-toggle-buttons button:hover {
+        background: var(--border);
+    }
+
+    .comment-toggle-buttons button.active {
+        pointer-events: none;
+        background-color: transparent;
+    }
+</style>
+
+<script>
+    let telegramLoaded = false;
+
+    function showGiscus() {
+        document.getElementById('show-giscus').classList.add('active');
+        document.getElementById('show-telegram').classList.remove('active');
+        document.getElementById('github-discussions').style.display = 'block';
+        document.getElementById('telegram-comments').style.display = 'none';
+        setGiscusTheme();
+    }
+
+    function showTelegram() {
+        document.getElementById('show-giscus').classList.remove('active');
+        document.getElementById('show-telegram').classList.add('active');
+        document.getElementById('github-discussions').style.display = 'none';
+        document.getElementById('telegram-comments').style.display = 'block';
+        if (!telegramLoaded) {
+            loadTelegramWidget();
+            telegramLoaded = true;
+        }
+    }
+
+    const themeSwitcher = document.querySelector("#theme-toggle");
+    if (themeSwitcher) {
+        themeSwitcher.addEventListener("click", () => {
+            setGiscusTheme();
+            setTelegramTheme();
+        });
+    }
+</script>
+```
+
+大部分的样式都遵循主题的设定，使按钮与主题看上去更和谐统一。
+
+通过`class="active"`与`display: block`、`display: none`间的切换、隐藏与显示，我们得以用`<button>`控制两个评论区的显示。
+
+将`pointer-events: none`应用在当前激活的评论区按钮上，能够使用户无法再次选中，杜绝了很多奇怪bug触发的可能性。
+
+## 为什么不是Discussion Widget
+Telegram除了提供Comments Widget外，还提供了Discussion Widget[^4]将频道的评论区接入网页，同样可以作为评论系统，但是它存在着挺多问题：
+- 博客评论区与频道评论区完全关联
+- Telegram无法识别经编辑的链接
+  
+完全关联这一点很好理解，毕竟Discussion Widget就是起到一种“桥接”的作用，将博客与频道绑定起来。如果我发布了技术博文，但我不想将链接广播到我的动画频道，这时的Discussion Widget就无法起到评论系统的作用。
+
+第二点问题不知是Telegram设计上的问题还是特性，当第一次发送链接时，Telegram能够主动识别；而如果是一条经过编辑的消息，即使它是链接，Telegram也不会识别。
+
+这样的特性不仅为Discussion Widget带来不便，还在广告投放者手中“被妙用”：他们往往会先在群组中发送一条正常的消息，随后将消息编辑为广告文案，以此躲过反广告机器人的识别与检测。
+
+总体而言，Discussion Widget并不是一套完善、高度可用的评论系统，它更适用于日常社交与个人Telegram频道相关性强的用户，否则，Discussion Widget并没有与Waline一较高下的实力。
+
+如果像我一样已经有一个公开频道，此时接入Discussion Widget将会非常不便，需要为旧博文手动关联评论区，影响频道的内容展示；而如果没有公开频道，创建并使用Discussion Widget也未尝不可。
+
+## 或许是Waline
+在第二个评论系统的选择上，我也有短暂考虑过Waline[^5]，它被广泛使用、口碑良好且没有广告，给我的第一印象不错。
+
+唯一的问题就是，它需要部署。虽说Waline也可以免费部署到Vercel[^6]，但是我个人还是倾向于使用一些现成的服务，例如Giscus的使用Github Discussion，Comments Widget的接入Telegram。
+
+使用额外部署的评论系统、调用一套第三方服务，就像引入新的外部依赖，它不一定会让博客变得不稳定，但是会让我感到复杂、不安定。相比之下，使用Comments Widget，将评论系统接入日常使用的社交软件，给我的感觉更合理、更无缝。
+
+但是结论不能没有余地，当有需要再次添加评论系统，或是博客重构的时候，Waline（或是它的继任者）会是一个好选择。
+
+[^1]:[giscus](https://giscus.app/)
+[^2]:[Xeon的Anime观察日志](https://t.me/XeonAnimeLog)
+[^3]:[Comments for websites](https://comments.app/)
+[^4]:[Discussion Widget](https://core.telegram.org/widgets/discussion)
+[^5]:[Waline | Waline](https://waline.js.org/)
+[^6]:[Vercel: Build and deploy the best web experiences with the Frontend Cloud](https://vercel.com/home)
+

@@ -1,0 +1,27 @@
+---
+interface Props {
+	path: string;
+}
+
+const config = {
+	el: "#comment",
+	path: Astro.props.path,
+};
+---
+
+<div id="comment"></div>
+<script is:inline defer define:vars={{ config }}>
+	function loadTwikoo() {
+		const script = document.createElement("script");
+		script.src = "https://cdnjs.cloudflare.com/ajax/libs/twikoo/1.6.44/twikoo.min.js"
+		script.onload = () => {
+			twikoo.init({
+				...config,
+				envId: "https://twikoo.xeonzilla.top",
+				lang: "zh-CN",
+			});
+		};
+		document.body.appendChild(script);
+	}
+	document.addEventListener("loadComment", loadTwikoo, { once: true });
+</script>

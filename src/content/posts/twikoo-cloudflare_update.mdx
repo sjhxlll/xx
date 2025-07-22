@@ -1,0 +1,83 @@
+---
+title: "升级你的twikoo-cloudflare"
+published: 2025-05-22
+image: "https://blog-static.xeonzilla.top/img/twikoo-cloudflare_update/cover.avif"
+tags: 
+  - "技术"
+category: "博客建设"
+---
+## 前言
+前面提到我的站点已经“All in Cloudflare”了，所以评论系统自然也要重新部署。好在主流的评论系统中，Twikoo提供了在Cloudflare Workers部署的选项，于是我的评论系统也就从Waline过渡到了Twikoo。
+
+目前在twikoo-cloudflare的仓库[^1]中，代码还停留在4个月前（2025年1月）的状态，twikoo后端的版本也停在了1.6.40，如果像我一样追求最新版，那么就需要自行更新。
+
+## 更新依赖
+twikoo-cloudflare的`package.json`中，大部分的依赖都是可以直接更新到最新版的，经过试验并能稳定使用的`package.json`如下：
+```json title="package.json" collapse={4-11} {3, 15, 18-21}
+{
+  "name": "twikoo-cloudflare",
+  "version": "1.6.43",
+  "description": "A simple, safe, free comment system.",
+  "author": "Tao Xin <tao@vanjs.org> (https://github.com/Tao-VanJS), Mingy <master@mingy.org> (https://github.com/wuzhengmao)",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "start": "wrangler dev"
+  },
+  "homepage": "https://twikoo.js.org",
+  "devDependencies": {
+    "wrangler": "^3.114.8"
+  },
+  "dependencies": {
+    "twikoo-func": "^1.6.43",
+    "url": "^0.11.4",
+    "uuid": "^11.1.0",
+    "xss": "^1.0.15"
+  },
+  "overrides": {
+    "axios": "git+https://github.com/wuzhengmao/axios-cf-worker.git#v0.x-cf"
+  }
+}
+```
+
+其中的axios并不是普通的版本，而是开发者进行了适配的`axios-cf-worker`，很可惜的是作者也有一段时间没有更新或是合并上游更改了，对于这部分的更新，唯有等待。
+
+如果像我一样更新了其中的`version`字段，则需要到`src/index.js`的115行左右同步更新。
+
+## 小心Wrangler
+可能有细心的读者注意到，我还在使用Wrangler3。为什么不进行升级呢？很简单，因为报错了。
+
+在我进行试验的Wrangler中，`4.13.2`会出现一个警告：
+```log title="bulid.log"
+▲ [WARNING] Import "default" will always be undefined because there is no matching export in "node_modules/unenv/dist/runtime/npm/whatwg-url.mjs" [import-is-undefined]
+
+    required-unenv-alias:whatwg-url:6:27:
+      6 │         "default" in esm ? esm.default : {}
+        ╵                                ~~~~~~~
+```
+
+而更高的`4.15.2`更是会直接报错：
+```log title="bulid.log"
+✘ [ERROR] Build failed with 1 error:
+
+  ✘ [ERROR] Could not resolve "./node/"
+	 
+      node_modules/axios/lib/platform/index.js:3:25:
+        3 │ module.exports = require('./node/');
+          ╵                          ~~~~~~~~~
+```
+
+考虑到Wrangler4进行了完全的重构，以达到对开发环境的完整模拟，属于破坏性更改，不兼容也在情理之中。
+
+最后，为了保证系统的稳定，我还是选择了Wrangler3。Cloudflare官方并没有停止对Wrangler3的维护，所以对Wrangler大版本的升级也没有那么急切。
+
+## 结语
+升级了后端，前端的升级就非常简单了，只需在CDN引入的版本号稍作修改即可。
+
+虽然我并不是开发者，但是从twikoo-cloudflare整体的结构来看，axios是其中最复杂，最难以维护的一环。如果想要更新axios-cf-worker，不仅要合并来自上游的更新、解决冲突，还要注意Cloudflare Workers是否有环境变化。或许放弃axios，转向替代品，对维护会更友好？
+
+Cloudflare Workers即将上线容器托管服务，对于愿意付费的用户，往后在Cloudflare平台上，可供选择的评论系统就很多了。而对免费用户而言，twikoo-cloudflare就是目前的最优解。
+
+[^1]:[twikoojs/twikoo-cloudflare](https://github.com/twikoojs/twikoo-cloudflare)

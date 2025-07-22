@@ -1,0 +1,29 @@
+---
+import { Image } from "astro:assets";
+import { markdownImageConfig } from "@/image-config.ts";
+
+interface Props {
+	src: string;
+	alt: string;
+	quality?: string | number;
+	sizes?: string;
+	class?: string;
+}
+
+const {
+	src,
+	alt,
+	quality = markdownImageConfig.quality,
+	sizes = markdownImageConfig.sizes,
+	class: className,
+} = Astro.props;
+---
+
+<Image
+  src={src}
+  alt={alt}
+  quality={quality}
+  sizes={sizes}
+  inferSize={true}
+  class:list={[className]}
+/>

@@ -1,0 +1,81 @@
+---
+title: "为博客添加Bangumi页面"
+published: 2025-04-15
+image: "https://blog-static.xeonzilla.top/img/blog_bangumi/cover.avif"
+tags:
+  - "技术"
+  - "Hugo"
+category: "博客建设"
+---
+## 另辟蹊径
+最近参观别人的博客，发现有些博客有Bangumi的页面，可以显示个人的动画、漫画的进度，很有趣，于是我也想为我的博客添加一个类似的页面。
+
+很可惜的是，这些插件都是Node.js生态下的产物，更精确地说，我所见的插件都是基于Hexo的。对于Hugo这样的非Node.js站点生成器，想要直接使用这类插件，应该是不可能的。
+
+我灵机一动，想到了Serverless Functions。各种云服务商的Serverless Functions都提供了Node.js环境，以运行函数，既然Hugo站点不能使用Node.js，我们就借用他人的环境。
+
+最开始，我打算使用大模型辅助我完成插件的开发，幸亏我提前搜索了有没有类似的项目，要不然就白白浪费了时间。事实证明，我并不是第一个想出这种玩法的人，前人的智慧更胜于我。最后我采用的是bilibili-bangumi-component[^1]，类似的项目还有BangumiTV[^2]。
+
+理论上，其他非Node.js生态的静态站点生成器也可以采用这个方案，例如Zola和Pelican。使用Node.js的站点同样可以使用，但是并无必要。
+
+## 快速实战
+bilibili-bangumi-component给出的后端部署教程极其详细，按步骤操作即可。
+
+前端的设置上，我们需要到`layouts/shortcodes`路径下创建一个供Hugo使用的shortcodes。使用CDN引入，并在html中使用组件，就能完成最基础的使用。
+
+```html title="layouts/shortcodes/bangumi.html"
+<bilibili-bangumi api="https://xeonzilla.top/api/bangumi" bilibili-enabled="false"></bilibili-bangumi>
+
+<style>
+    bilibili-bangumi {
+        --bbc-text-base-color: rgb(51, 65, 85);
+        --bbc-label-color: rgb(96, 165, 250);
+        --bbc-primary-color: rgb(96, 165, 250);
+    }
+
+    bilibili-bangumi[dark] {
+        --bbc-text-base-color: rgb(203, 213, 225);
+        --bbc-label-color: rgb(37, 99, 235);
+        --bbc-primary-color: rgb(37, 99, 235);
+    }
+</style>
+
+<script type="module"
+    src="https://fastly.jsdelivr.net/npm/bilibili-bangumi-component@latest/dist/bilibili-bangumi-component/bilibili-bangumi-component.esm.js">
+    </script>
+
+<script>
+    const bangumi = document.querySelector('bilibili-bangumi');
+
+    function applyBangumiTheme() {
+        const isDark = document.documentElement.classList.contains('dark')
+        if (isDark) {
+            bangumi.setAttribute('dark', '');
+        } else {
+            bangumi.removeAttribute('dark');
+        }
+    }
+
+    applyBangumiTheme()
+
+    const observer = new MutationObserver(applyBangumiTheme)
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+</script>
+```
+我创建的组件中，除了基础调用，还调整了主题色以适配Blowfish、适配了Blowfish的黑暗模式逻辑，各位可以根据需求修改。
+
+创建shortcodes后，我们就可以在需要的页面中通过调用shortcodes的方法调用组件。
+
+实际上，完全可以为此创建一个全新的模板，但是这对Go template熟悉程度的要求较高，并不适合我这样的初阶用户。使用shortcodes快速创建并插入现有模板，实现难度就要低上许多。
+
+bilibili-bangumi-component的不足之处，就是可定制之处不多，可能这就是WebComponent的特性。同时，作者的代码也看得我一头雾水，大概率是经过混淆，所有的变量与函数都不可辨认，直接修改源代码这条路也行不通了。
+
+至少它在完成本职工作的方面完成得出色，基本的功能都实现了，甚至还有按页码转跳，算是勉强让我满意。
+
+## 生态的力量
+完成了本次添加Bangumi页面，我深刻感受到了Node.js生态的力量，不仅有大量的npm包，还有繁荣的社区。相比之下，非Node.js的站点生成器们只能完成最基本的站点生成功能，确实可以称作生态贫瘠了。如果追求极简化，那么Hugo与Zola之流就很合适；但是对于我这样的“玩家”，与Node.js的臃肿一体两面的丰富生态，或许是更适合的去处。
+
+正值博客动工的一周年之际，我打算为站点进行一次彻底、完全的重构，从生成器、到主题、再到托管方式。在这次的迁徙中，我就可以慢慢接触Node.js，让它向我展示无与伦比的可玩性与可拓展性。
+
+[^1]:[yixiaojiu/bilibili-bangumi-component: 展示 bilibili 与 Bangumi 追番列表的 WebComponent 组件](https://github.com/yixiaojiu/bilibili-bangumi-component)
+[^2]:[GeeKaven/BangumiTV: 一个基于 Vercel Severless Function 的 Bangumi.tv 追番进度展示页面](https://github.com/GeeKaven/BangumiTV)
